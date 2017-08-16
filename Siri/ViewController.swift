@@ -2,109 +2,114 @@ import UIKit
 import Speech
 
 
-class ViewController: UIViewController, SFSpeechRecognizerDelegate {
-	
+class ViewController: UIViewController, SFSpeechRecognizerDelegate{
 	
 	@IBOutlet weak var textView: UITextView!
-	@IBOutlet weak var microphoneButton: UIButton!
-    
-     private let speechRecognizer = SFSpeechRecognizer(locale: Locale.init(identifier: "en-US"))!
-    
-    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
-    private var recognitionTask: SFSpeechRecognitionTask?
-    private let audioEngine = AVAudioEngine()
-    
-    
+    @IBOutlet weak var microphoneButton: UIButton!
+    @IBOutlet weak var recordingLabel: UILabel!
 	
-	override func viewDidLoad() {
+    private let speechRecognizer = SFSpeechRecognizer(locale: Locale.init(identifier: "en-US"))
+    
+    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest? //Handles SR request
+    private var recognitionTask: SFSpeechRecognitionTask?                 //Handles result of SR request
+    private let audioEngine = AVAudioEngine()                            //Provides audio input
+    
+    
+    override func viewDidLoad() {
 		super.viewDidLoad()
         
-        
-        microphoneButton.isEnabled = false
-        
-        speechRecognizer.delegate = self
+        microphoneButton.isEnabled = false //disabling microphone button until SR activated
+        speechRecognizer?.delegate = self //calling the ViewController itself
         
         SFSpeechRecognizer.requestAuthorization { (authStatus) in
-            
             var isButtonEnabled = false
             
             switch authStatus {
-            case .authorized:
+            case.authorized:
                 isButtonEnabled = true
-                
-            case .denied:
+            
+            case.denied:
                 isButtonEnabled = false
-                print("User denied access to speech recognition")
+                print("User denied acces to speech recognition")
                 
-            case .restricted:
+            case.restricted:
                 isButtonEnabled = false
-                print("Speech recognition restricted on this device")
+                print("Speech recognition restricted in this device")
                 
-            case .notDetermined:
+            case.notDetermined:
                 isButtonEnabled = false
-                print("Speech recognition not yet authorized")
+                print("Speech recognition is not authorized")
+            
             }
             
-            OperationQueue.main.addOperation() {
-                self.microphoneButton.isEnabled = isButtonEnabled
+            OperationQueue.main.addOperation {                       //method that enables microphone if authorized
+                self.microphoneButton.isEnabled = isButtonEnabled   //else disables microphone
             }
+            
         }
-		
+            
 	}
     
-    
-
-    @IBAction func microphoneTapped(_ sender: AnyObject) {
-        if audioEngine.isRunning {
-            audioEngine.stop()
-            recognitionRequest?.endAudio()
-            microphoneButton.isEnabled = false
-            microphoneButton.setTitle("Start Recording", for: .normal)
-        } else {
-            startRecording()
-            microphoneButton.setTitle("Stop Recording", for: .normal)
+    @IBAction func microphoneTapped(_ sender: UIButton) {
+        if audioEngine.isRunning {                     //if audioEngine is running
+            audioEngine.stop()                        //stop audioEngine
+            recognitionRequest?.endAudio()           //terminate input audio to cognitionRequest
+            microphoneButton.isEnabled = false      //disable microphone button
+            recordingLabel.text = "Recording in Progress!"
+        } else {                                     //if audioEngine is working
+            startRecording()                        //call startRecording()
+            recordingLabel.text = "Recording in Progress!"
         }
     }
     
-    func startRecording() {
+    //triggering SR, and checking the availability of SR while creating SR task
+    func speechRecognizer(_ speechRecognizer: SFSpeechRecognizer, availabilityDidChange available: Bool) {
+        if available {
+            microphoneButton.isEnabled = true
+        } else {
+            microphoneButton.isEnabled = false
+        }
+    }
+    
+    func startRecording(){
         
-        if recognitionTask != nil {  //1
-            recognitionTask?.cancel()
+        if recognitionTask != nil{                   //checks if recognitionTask is running
+            recognitionTask?.cancel()               //if so, then cancel task and recognition
             recognitionTask = nil
+    
         }
         
-        let audioSession = AVAudioSession.sharedInstance()  //2
-        do {
-            try audioSession.setCategory(AVAudioSessionCategoryRecord)
-            try audioSession.setMode(AVAudioSessionModeMeasurement)
-            try audioSession.setActive(true, with: .notifyOthersOnDeactivation)
-        } catch {
-            print("audioSession properties weren't set because of an error.")
+        let audioSession = AVAudioSession.sharedInstance()                //prepares for audio recording
+        do{
+           try audioSession.setCategory(AVAudioSessionCategoryRecord)    //sets category of session as recording
+           try audioSession.setMode(AVAudioSessionModeMeasurement)      //sets mode as measurement
+           try audioSession.setActive(true, with: .notifyOthersOnDeactivation)  //activates audio session
+        } catch{
+            print("Audio Session properties weren't set because of an error")  
         }
         
-        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()  //3
+        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
         
-        guard let inputNode = audioEngine.inputNode else {
-            fatalError("Audio engine has no input node")
-        }  //4
+        guard let inputNode = audioEngine.inputNode else {   //checks if audio engine has audio input for recording
+            fatalError("AudioEngine has no input node")     //if no audio input, then report fatal error
+        }
         
-        guard let recognitionRequest = recognitionRequest else {
-            fatalError("Unable to create an SFSpeechAudioBufferRecognitionRequest object")
-        } //5
+        guard let recognitionRequest = recognitionRequest else {         //checks if recognitionRequst is instantiated
+            fatalError("Unable to create SFSpeechAudioBufferRecognitionRequest object")
+        }
         
-        recognitionRequest.shouldReportPartialResults = true  //6
+        recognitionRequest.shouldReportPartialResults = true   //tells recognitionRequest to report partial results of
+                                                              //speech recognition as user speaks
         
-        recognitionTask = speechRecognizer.recognitionTask(with: recognitionRequest, resultHandler: { (result, error) in  //7
-            
-            var isFinal = false  //8
+        recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest, resultHandler: { (result,error) in    //starts recognition
+            var isFinal = false
             
             if result != nil {
-                
-                self.textView.text = result?.bestTranscription.formattedString  //9
+                self.textView.text = result?.bestTranscription.formattedString
                 isFinal = (result?.isFinal)!
             }
-            
-            if error != nil || isFinal {  //10
+        
+            if error != nil || isFinal {
                 self.audioEngine.stop()
                 inputNode.removeTap(onBus: 0)
                 
@@ -114,32 +119,40 @@ class ViewController: UIViewController, SFSpeechRecognizerDelegate {
                 self.microphoneButton.isEnabled = true
             }
         })
-        
-        let recordingFormat = inputNode.outputFormat(forBus: 0)  //11
+
+        let recordingFormat = inputNode.outputFormat(forBus: 0)         //adding audio input to recognitionRequest
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { (buffer, when) in
             self.recognitionRequest?.append(buffer)
         }
         
-        audioEngine.prepare()  //12
+        
+        audioEngine.prepare()                       //prepares and starts audioEngine
         
         do {
             try audioEngine.start()
-        } catch {
-            print("audioEngine couldn't start because of an error.")
+        }   catch {
+            print("AudioEngine couldn't start because of an error")
         }
         
         textView.text = "Say something, I'm listening!"
         
-    }
-    
-    func speechRecognizer(_ speechRecognizer: SFSpeechRecognizer, availabilityDidChange available: Bool) {
-        if available {
-            microphoneButton.isEnabled = true
-        } else {
-            microphoneButton.isEnabled = false
-        }
-    }
-}
+    }   //startRecording() ends
+        
+}   //class ViewController ends 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
