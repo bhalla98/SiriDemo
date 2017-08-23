@@ -1,11 +1,13 @@
 import UIKit
 import Speech
+import AVKit
 
 
 class ViewController: UIViewController, SFSpeechRecognizerDelegate{
 	
 	@IBOutlet weak var textView: UITextView!
     @IBOutlet weak var microphoneButton: UIButton!
+    @IBOutlet weak var stopRecordingButton: UIButton!
     @IBOutlet weak var recordingLabel: UILabel!
 	
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale.init(identifier: "en-US"))
@@ -55,11 +57,21 @@ class ViewController: UIViewController, SFSpeechRecognizerDelegate{
             audioEngine.stop()                        //stop audioEngine
             recognitionRequest?.endAudio()           //terminate input audio to cognitionRequest
             microphoneButton.isEnabled = false      //disable microphone button
-            recordingLabel.text = "Recording in Progress!"
+            recordingLabel.text = "Recording In Progress!"
         } else {                                     //if audioEngine is working
             startRecording()                        //call startRecording()
-            recordingLabel.text = "Recording in Progress!"
+            recordingLabel.text = "Recording In Progress!"
+            microphoneButton.isEnabled = false
+            stopRecordingButton.isEnabled = true
         }
+    }
+    
+    @IBAction func stopRecording(_ sender: UIButton) {
+        recordingLabel.text = "Tap To Record!"
+        stopRecordingButton.isEnabled = false
+        microphoneButton.isEnabled = true
+        let audioSession = AVAudioSession.sharedInstance()
+        try! audioSession.setActive(false)
     }
     
     //triggering SR, and checking the availability of SR while creating SR task
