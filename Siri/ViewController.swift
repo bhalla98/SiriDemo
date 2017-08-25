@@ -2,7 +2,6 @@ import UIKit
 import Speech
 import AVKit
 
-
 class ViewController: UIViewController, SFSpeechRecognizerDelegate{
 	
 	@IBOutlet weak var textView: UITextView!
@@ -41,15 +40,12 @@ class ViewController: UIViewController, SFSpeechRecognizerDelegate{
             case.notDetermined:
                 isButtonEnabled = false
                 print("Speech recognition is not authorized")
-            
             }
             
             OperationQueue.main.addOperation {                       //method that enables microphone if authorized
                 self.microphoneButton.isEnabled = isButtonEnabled   //else disables microphone
             }
-            
         }
-            
 	}
     
     @IBAction func microphoneTapped(_ sender: UIButton) {
@@ -88,7 +84,6 @@ class ViewController: UIViewController, SFSpeechRecognizerDelegate{
         if recognitionTask != nil{                   //checks if recognitionTask is running
             recognitionTask?.cancel()               //if so, then cancel task and recognition
             recognitionTask = nil
-    
         }
         
         let audioSession = AVAudioSession.sharedInstance()                //prepares for audio recording
@@ -132,13 +127,14 @@ class ViewController: UIViewController, SFSpeechRecognizerDelegate{
             }
         })
 
-        let recordingFormat = inputNode.outputFormat(forBus: 0)         //adding audio input to recognitionRequest
+        //adding audio input to recognitionRequest
+        let recordingFormat = inputNode.outputFormat(forBus: 0)
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { (buffer, when) in
             self.recognitionRequest?.append(buffer)
         }
         
-        
-        audioEngine.prepare()                       //prepares and starts audioEngine
+        //prepares and starts audioEngine
+        audioEngine.prepare()
         
         do {
             try audioEngine.start()
@@ -149,22 +145,4 @@ class ViewController: UIViewController, SFSpeechRecognizerDelegate{
         textView.text = "Say something, I'm listening!"
         
     }   //startRecording() ends
-        
 }   //class ViewController ends 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
